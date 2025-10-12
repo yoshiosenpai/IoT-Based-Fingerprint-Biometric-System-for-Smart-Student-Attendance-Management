@@ -1,0 +1,76 @@
+[
+    {
+      "id":"mqtt_in_att",
+      "type":"mqtt in",
+      "z":"f1",
+      "name":"Attendance IN",
+      "topic":"attendance/events",
+      "qos":"0",
+      "datatype":"auto",
+      "broker":"mqtt_local",
+      "nl":false,
+      "rap":true,
+      "x":140,"y":120,"wires":[["json_parse"]]
+    },
+    {
+      "id":"json_parse","type":"json","z":"f1","name":"Ensure JSON object",
+      "property":"payload","action":"obj","pretty":false,"x":360,"y":120,"wires":[["fn_add_received"]]
+    },
+    {
+      "id":"fn_add_received","type":"function","z":"f1","name":"Add server receive time + MYT",
+      "func":"if (typeof msg.payload === 'string') { try { msg.payload = JSON.parse(msg.payload); } catch(e) { return null; } }\nconst p = msg.payload;\nlet dt = p.timestamp ? new Date(p.timestamp) : new Date();\nconst local = dt.toLocaleString('en-MY', { timeZone: 'Asia/Kuala_Lumpur', hour12: false });\np._received_at = new Date().toISOString();\np.local_time   = local;\np.name         = p.name || 'Unknown';\nmsg.payload = p; return msg;",
+      "outputs":1,"noerr":0,"x":630,"y":120,"wires":[["csv_fmt","fn_tg"]]
+    },
+    {
+      "id":"csv_fmt","type":"csv","z":"f1","name":"To CSV (fixed columns)",
+      "sep":",","hdrin":false,"hdrout":false,"multi":"one","ret":"\\n",
+      "temp":"timestamp,local_time,device,name,finger_id,confidence,status,_received_at",
+      "skip":"0","strings":true,"include_empty_strings":"","include_null_values":"",
+      "x":890,"y":100,"wires":[["file_append","debug_csv"]]
+    },
+    {
+      "id":"file_append","type":"file","z":"f1","name":"Append to CSV",
+      "filename":"C:\\\\Users\\\\<yourname>\\\\Documents\\\\attendance.csv",
+      "appendNewline":true,"createDir":true,"overwriteFile":"false","encoding":"none",
+      "x":1160,"y":100,"wires":[[]]
+    },
+    {
+      "id":"debug_csv","type":"debug","z":"f1","name":"CSV line (for testing)",
+      "active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"payload",
+      "x":1160,"y":160,"wires":[]
+    },
+    {
+      "id":"inject_header","type":"inject","z":"f1","name":"Write CSV header (click once)",
+      "props":[{"p":"payload"}],"repeat":"","once":false,"onceDelay":0.1,"topic":"",
+      "payload":"timestamp,local_time,device,name,finger_id,confidence,status,_received_at","payloadType":"str",
+      "x":910,"y":40,"wires":[["file_append"]]
+    },
+    {
+      "id":"inject_test","type":"inject","z":"f1","name":"Test row",
+      "props":[{"p":"payload"}],"repeat":"","once":false,"onceDelay":0.1,"topic":"",
+      "payload":"{\"timestamp\":\"2025-10-10T22:35:00+08:00\",\"device\":\"esp32-lab-1\",\"name\":\"Siti\",\"finger_id\":2,\"confidence\":143,\"status\":\"present\"}",
+      "payloadType":"str","x":140,"y":180,"wires":[["json_parse"]]
+    },
+    {
+      "id":"fn_tg","type":"function","z":"f1","name":"Format Telegram",
+      "func":"let p = msg.payload;\nconst when = p.local_time || p.timestamp || new Date().toISOString();\nconst name = p.name || 'Unknown';\nmsg.payload = {\n  chatId: 123456789,      // <-- replace with your numeric chat_id\n  type: 'message',\n  content: `✅ Attendance Recorded\\n👤 ${name} (ID ${p.finger_id})\\n🕒 ${when}\\n🏫 Device: ${p.device}`\n};\nreturn msg;",
+      "outputs":1,"x":890,"y":160,"wires":[["tg_sender"]]
+    },
+    {
+      "id":"tg_sender","type":"telegram sender","z":"f1","name":"Telegram notify",
+      "bot":"tg_bot","haserroroutput":false,"outputs":1,"x":1160,"y":220,"wires":[[]]
+    },
+    {
+      "id":"mqtt_local","type":"mqtt-broker","name":"Local Mosquitto",
+      "broker":"localhost","port":"1883","tls":"","clientid":"","usetls":false,
+      "protocolVersion":"4","keepalive":"60","cleansession":true
+    },
+    {
+      "id":"tg_bot","type":"telegram bot","botname":"YourBot","usernames":"",
+      "chatids":"", "baseapiurl":"","updatemode":"polling","pollinterval":"300",
+      "usesocks":false,"sockshost":"","socksport":"6667","bothost":"","botpath":"",
+      "localbotport":"8443","publicbotport":"8443","privatekey":"","certificate":"",
+      "useselfsignedcertificate":false,"sslterminated":false,"verboselogging":false
+    }
+  ]
+  
