@@ -1,4 +1,3 @@
-````markdown
 # IoT-Based Fingerprint Biometric Attendance (ESP32 + AS608)
 
 Simple, demo-friendly FYP project:
@@ -8,7 +7,7 @@ Simple, demo-friendly FYP project:
 - **Telegram** notification on every scan (optional but recommended)
 
 ---
-![wiring-diagram](hardware/wiring-diagram(h).png)
+![wiring-diagram](hardware/wiring-diagram.png)
 ## 1) Hardware
 
 - ESP32 DevKit (USB)
