@@ -7,9 +7,9 @@
 #include <Adafruit_Fingerprint.h>
 
 // ====== USER CONFIG ======
-const char* WIFI_SSID = "YOUR_WIFI_SSID";
-const char* WIFI_PASS = "YOUR_WIFI_PASSWORD";
-const char* MQTT_HOST = "192.168.1.23"; // PC's LAN IP (NOT localhost)
+const char* WIFI_SSID = "test";
+const char* WIFI_PASS = "test123456";
+const char* MQTT_HOST = "192.168.1.159"; // PC's LAN IP (NOT localhost)
 const uint16_t MQTT_PORT = 1883;
 const char* MQTT_CLIENT_ID = "esp32-attendance-01";
 const char* MQTT_TOPIC = "attendance/events";
@@ -86,20 +86,19 @@ void loop(){
   p = finger.fingerFastSearch();
   if(p==FINGERPRINT_OK){
     uint16_t id=finger.fingerID, conf=finger.confidence; const char* nmC=nameFor(id); String nm = nmC?String(nmC):"Unknown";
-    oledCentered(String("scanning.. ")+nm+" enter", String("ID#")+id);
+    oledCentered(String("Approved ")+nm+" enter", String("ID#")+id);
 
     unsigned long now = millis();
     if(!(id==lastId && (now-lastSentMs)<DEDUP_WINDOW_MS)){
       String ts=iso8601Now();
       String payload = String("{\"timestamp\":\"")+ts+"\",\"device\":\""+DEVICE_NAME+"\",\"finger_id\":"+id+",\"name\":\""+nm+"\",\"confidence\":"+conf+",\"status\":\"present\"}";
       bool sent = mqttSafePublish(MQTT_TOPIC, payload, true);
-      Serial.println(sent? "MQTT publish OK":"MQTT publish SKIPPED (not connected)");
+      Serial.println(sent? "Data Received OK":"MQTT publish SKIPPED (not connected)");
       lastId=id; lastSentMs=now;
     }
     delay(1000);
   } else if(p==FINGERPRINT_NOTFOUND){
     oledCentered("scanning..","Unknown"); delay(700);
-    // If you also want to log unknowns, uncomment:
     /*
     String ts=iso8601Now();
     String payload=String("{\"timestamp\":\"")+ts+"\",\"device\":\""+DEVICE_NAME+"\",\"finger_id\":-1,\"name\":\"Unknown\",\"confidence\":0,\"status\":\"unknown\"}";
