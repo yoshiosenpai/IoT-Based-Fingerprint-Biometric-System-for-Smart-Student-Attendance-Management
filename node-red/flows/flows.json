@@ -1,0 +1,271 @@
+[
+    {
+        "id": "4ec43cfd7ba995cd",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "mqtt_in_att",
+        "type": "mqtt in",
+        "z": "4ec43cfd7ba995cd",
+        "name": "Attendance IN",
+        "topic": "attendance/events",
+        "qos": "0",
+        "datatype": "auto",
+        "broker": "mqtt_local",
+        "nl": false,
+        "rap": true,
+        "inputs": 0,
+        "x": 90,
+        "y": 200,
+        "wires": [
+            [
+                "json_parse"
+            ]
+        ]
+    },
+    {
+        "id": "json_parse",
+        "type": "json",
+        "z": "4ec43cfd7ba995cd",
+        "name": "Ensure JSON object",
+        "property": "payload",
+        "action": "obj",
+        "pretty": false,
+        "x": 300,
+        "y": 160,
+        "wires": [
+            [
+                "fn_add_received"
+            ]
+        ]
+    },
+    {
+        "id": "fn_add_received",
+        "type": "function",
+        "z": "4ec43cfd7ba995cd",
+        "name": "Add server receive time",
+        "func": "// Ensure object\nif (typeof msg.payload === 'string') {\n  try { msg.payload = JSON.parse(msg.payload); } catch(e) { return null; }\n}\nconst p = msg.payload;\n\n// Local MYT time from device timestamp if present, else from server clock\nlet dt = p.timestamp ? new Date(p.timestamp) : new Date();\nconst local = dt.toLocaleString('en-MY', {\n  timeZone: 'Asia/Kuala_Lumpur',\n  hour12: false\n});\n\n// Add/normalize fields\np._received_at = new Date().toISOString();   // server UTC for reference\np.local_time   = local;                      // human-friendly MYT\np.name         = p.name || 'Unknown';\n\nmsg.payload = p;\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 260,
+        "wires": [
+            [
+                "csv_fmt",
+                "953d3fe9355c89ec"
+            ]
+        ]
+    },
+    {
+        "id": "csv_fmt",
+        "type": "csv",
+        "z": "4ec43cfd7ba995cd",
+        "name": "To CSV (fixed columns)",
+        "sep": ",",
+        "hdrin": false,
+        "hdrout": "none",
+        "multi": "one",
+        "ret": "\\n",
+        "temp": "timestamp,local_time,device,name,finger_id,confidence,status,_received_at",
+        "skip": "0",
+        "strings": true,
+        "include_empty_strings": "",
+        "include_null_values": "",
+        "x": 710,
+        "y": 220,
+        "wires": [
+            [
+                "file_append",
+                "debug_view"
+            ]
+        ]
+    },
+    {
+        "id": "file_append",
+        "type": "file",
+        "z": "4ec43cfd7ba995cd",
+        "name": "Append to CSV",
+        "filename": "C:\\\\Users\\\\User\\\\Documents\\\\attendance.csv",
+        "filenameType": "str",
+        "appendNewline": true,
+        "createDir": true,
+        "overwriteFile": "false",
+        "encoding": "none",
+        "x": 980,
+        "y": 140,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "debug_view",
+        "type": "debug",
+        "z": "4ec43cfd7ba995cd",
+        "name": "CSV line (for testing)",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 980,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "inject_header",
+        "type": "inject",
+        "z": "4ec43cfd7ba995cd",
+        "name": "Write CSV header (click once)",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "timestamp,_received_at,device,finger_id,confidence,status",
+        "payloadType": "str",
+        "x": 660,
+        "y": 40,
+        "wires": [
+            [
+                "file_append"
+            ]
+        ]
+    },
+    {
+        "id": "inject_test",
+        "type": "inject",
+        "z": "4ec43cfd7ba995cd",
+        "name": "Test row",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"timestamp\":\"2025-10-10T22:35:00+08:00\",\"device\":\"esp32-lab-1\",\"finger_id\":2,\"confidence\":143,\"status\":\"present\"}",
+        "payloadType": "str",
+        "x": 100,
+        "y": 120,
+        "wires": [
+            [
+                "json_parse"
+            ]
+        ]
+    },
+    {
+        "id": "e0c95992b10e3078",
+        "type": "telegram sender",
+        "z": "4ec43cfd7ba995cd",
+        "name": "ESP32",
+        "bot": "e2f0c10682282614",
+        "haserroroutput": false,
+        "outputs": 1,
+        "x": 980,
+        "y": 340,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "953d3fe9355c89ec",
+        "type": "function",
+        "z": "4ec43cfd7ba995cd",
+        "name": "function 1",
+        "func": "let p = msg.payload;\nif (typeof p === \"string\") {\n  try { p = JSON.parse(p); } catch(e) { return null; }\n}\nconst when = p.local_time || p.timestamp || new Date().toISOString();\nconst name = p.name || \"Unknown\";\n\nmsg.payload = {\n  chatId: 6535703218,     // <— your numeric chat_id\n  type: \"message\",\n  content: `✅ Attendance Recorded\n👤 ${name} (ID ${p.finger_id})\n🕒 ${when}\n🏫 Device: ${p.device}`\n};\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 700,
+        "y": 340,
+        "wires": [
+            [
+                "e0c95992b10e3078"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt_local",
+        "type": "mqtt-broker",
+        "name": "Local Mosquitto",
+        "broker": "localhost",
+        "port": "1883",
+        "tls": "",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "e2f0c10682282614",
+        "type": "telegram bot",
+        "botname": "Iot_attendance_bot",
+        "usernames": "",
+        "chatids": "6535703218",
+        "baseapiurl": "",
+        "testenvironment": false,
+        "updatemode": "polling",
+        "pollinterval": 300,
+        "usesocks": false,
+        "sockshost": "",
+        "socksprotocol": "socks5",
+        "socksport": 6667,
+        "socksusername": "anonymous",
+        "sockspassword": "",
+        "bothost": "",
+        "botpath": "",
+        "localbothost": "0.0.0.0",
+        "localbotport": 8443,
+        "publicbotport": 8443,
+        "privatekey": "",
+        "certificate": "",
+        "useselfsignedcertificate": false,
+        "sslterminated": false,
+        "verboselogging": false
+    },
+    {
+        "id": "212739c2c1b3caba",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-contrib-telegrambot": "16.3.2"
+        }
+    }
+]
